@@ -201,8 +201,11 @@ acf(at)
 ### Integrated Model
 trend_regressor = cbind(poly(x,3),f12_sig)
 test_range = seq.int(length(training)+1,length(msts))
+x_test=seq.int(1,length(msts))
+x_test = poly(x_test,3)[test_range,]
 f12_test = fourier(ts(msts,frequency = 12),K=6)[test_range,cbind('S1-12','C1-12','S2-12','C2-12','C3-12','S4-12','S5-12','C6-12')]
-test_reg = cbind(poly(test_range,3),f12_test)
+test_reg = cbind(x_test,f12_test)
+
 ##fit integrated model
 ari_high = Arima(training,order = c(4,0,1),xreg = trend_regressor,method = 'CSS',include.mean = TRUE)
 summary(ari_high)
@@ -225,20 +228,14 @@ acf(ari_high$residuals)
 ari_opt = Arima(training,order = c(4,0,0),xreg = trend_regressor,method = 'CSS',include.mean = TRUE)
 plot(ari_opt)
 summary(ari_opt)
-
+sum(ari_opt$residuals^2)
 prediction = predict(ari_opt,n.ahead = 12,newxreg = test_reg)
 
-naive_pred=msts[test_range-1]
+error = sum((msts[test_range]-prediction$pred)^2)
+naive_pred=training[test_range-12]
 naive_error = sum((msts[test_range]-naive_pred)^2)
 # Method 1: TBATS
 # Run TBATS model
 tbats_training = tbats(training)
 plot(tbats_training, main='Multiple Season Decomposition')
 
-# Forecast test model
-tbats_training %>% 
-  forecast(h=12, level=50) %>%
-  autoplot() + autolayer(test)
-
-fc_tbats <- forecast(tbats_training,h=5)
-plot(fc_tbats, main = "TBATS Forecast")
