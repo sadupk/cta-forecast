@@ -20,7 +20,7 @@ dt_monthly = aggregate(total_rides ~ month + year, dt_daily, sum)
 # Scale data to 100,000
 dt_monthly$total_rides = dt_monthly$total_rides/100000
 
-lines(dt_monthly$total_rides)
+plot(dt_monthly$total_rides, type='l')
 
 aggregate(total_rides ~ service_date, dt_daily, length)
 
@@ -65,8 +65,15 @@ for (i in 2:8){
 fit_poly = lm(training ~ poly(x, 3))
 rss = sum(fit_poly$residuals^2)
 print(rss)
-plot(x, training,'b-')
-lines(x, fitted(fit_poly),col='red')
+plot(x, 
+     training,
+     type='l',
+     xlab='Time',
+     ylab='Rides (in 100,000s)',
+     main='3rd Order Polynomial Trend Fit')
+lines(x, fitted(fit_poly),col='red', lty=2)
+legend(1,500, legend = c("Raw Data", "Deterministic Fit"), col = c("black", "red"), lty=c(1,2))
+
 
 #detrended  series 
 #training_dtrend = fit_poly$residuals
@@ -144,6 +151,28 @@ F0 = ((A1-A0)/(n2_r-n1_r))/(A0/(n_r))
 F_dist = 1- pf(F0, n2_r-n1_r, n_r)
 print(paste0("Significance: ", F_dist))
 
+################################################################################################################
+# Results of Polynomial + Fourier Fitting
+fit_poly = lm(training ~ poly(x, 3) + f12)
+plot(x, 
+     training,
+     type='l',
+     xlab='Time',
+     ylab='Rides (in 100,000s)',
+     main='Polynomial + Fourier Fit')
+lines(x, 
+      fitted(fit_poly), 
+      col='red',
+      lty=2)
+legend(0, 500, legend = c("Raw Data", "Deterministic Fit"), col = c("black", "red"), lty=c(1,2))
+
+plot(x, 
+     fit_poly$residuals,
+     type='l',
+     xlab='Time',
+     ylab='Time Serier Residuals',
+     main='Trend And Seasonality Adjusted Residuals')
+
 #thus pvalue is > 0,05 hence the reduction in RSS due to higher terms are not significant hence use f12_sig
 
 
@@ -201,7 +230,7 @@ acf(at)
 ### Integrated Model
 trend_regressor = cbind(poly(x,3),f12_sig)
 test_range = seq.int(length(training)+1,length(msts))
-x_test=seq.int(1,length(msts))
+x_test = seq.int(1,length(msts))
 x_test = poly(x_test,3)[test_range,]
 f12_test = fourier(ts(msts,frequency = 12),K=6)[test_range,cbind('S1-12','C1-12','S2-12','C2-12','C3-12','S4-12','S5-12','C6-12')]
 test_reg = cbind(x_test,f12_test)
@@ -234,8 +263,35 @@ prediction = predict(ari_opt,n.ahead = 12,newxreg = test_reg)
 error = sum((msts[test_range]-prediction$pred)^2)
 naive_pred=training[test_range-12]
 naive_error = sum((msts[test_range]-naive_pred)^2)
-# Method 1: TBATS
-# Run TBATS model
-tbats_training = tbats(training)
-plot(tbats_training, main='Multiple Season Decomposition')
+
+
+#######################################################################################################
+# Final Results Plot
+x_test_index = seq(1, length(test)) + max(x)
+
+fit_poly = lm(training ~ poly(x, 3) + f12)
+plot(seq(1, length(msts))[150:210],
+     msts[150:210],
+     type='l',
+     xlab='Time',
+     ylab='Rides (in 100,000s)',
+     main='Monthly Forecast with 95% Confidence Interval')
+lines(x_test_index,
+      prediction$pred,
+      col='red',
+      lty=1)
+lines(x_test_index,
+      prediction$pred + 1.96*prediction$se,
+      col='red',
+      lty=2)
+lines(x_test_index,
+      prediction$pred - 1.96*prediction$se,
+      col='red',
+      lty=2)
+legend(150, 375, legend = c("Raw Data", "Deterministic Fit", "95% Confidence Interval"), 
+       col = c("black", "red", "red"), lty=c(1,1,2))
+
+
+a = forecast(ari_opt, xreg = trend_regressor, level = 95)
+autoplot(a)
 
