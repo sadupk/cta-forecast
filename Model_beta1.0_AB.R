@@ -109,26 +109,28 @@ f12 = fourier(ts(dt_notrend, frequency = 12), K=1)
 fit_poly = lm(dt_notrend ~ 0+f12)
 A1 = sum(fit_poly$residuals^2)
 summary(fit_poly)
+print(fit_poly$coefficients)
 print(paste0("RSS: ", A1))
 
 for (j in 2:6){
   f12 = fourier(ts(dt_notrend, frequency = 12), K=j)
   fit_poly = lm(dt_notrend ~ 0 + f12)  
-  print(summary(fit_poly))
+  print(fit_poly$coefficients)
   A0 = sum(fit_poly$residuals^2)
   n_r = length(x) - length(fit_poly$coefficients)
   F0 = ((A1 - A0)/2)/(A0/n_r)
   F_dist = 1- pf(F0, 2, n_r)
-  #print(paste0("Comparing polynomials with degrees ", 2*(j-1), " and ", 2*j))
+  print(paste0("Comparing polynomials with degrees ", 2*(j-1), " and ", 2*j))
   print(paste0("F12 degree: ", j))
   print(paste0("RSS: " , A0))
   print(paste0("Significance: ", F_dist))
   A1=A0
 }
 
-sin_cos = cbind(sin(2*pi*x*7/12),cos(2*pi*x*7/12))
+sin_cos = cbind(sin(2*pi*x*7.01/12),cos(2*pi*x*7.01/12))
 fit_poly = lm(dt_notrend~0+f12+sin_cos)
 summary(fit_poly)
+print(fit_poly$coefficients)
 A0 = sum(fit_poly$residuals^2)
 n_r = length(x) - length(fit_poly$coefficients)
 F0 = ((A1 - A0)/2)/(A0/n_r)
@@ -264,6 +266,8 @@ error = sum((msts[test_range]-prediction$pred)^2)
 naive_pred=training[test_range-12]
 naive_error = sum((msts[test_range]-naive_pred)^2)
 
+pacf(ari_opt$residuals, main='PACF: Model Residuals')
+plot(ari_opt$residuals, ylab="Residuals", main="Residuals")
 
 #######################################################################################################
 # Final Results Plot
@@ -290,8 +294,4 @@ lines(x_test_index,
       lty=2)
 legend(150, 375, legend = c("Raw Data", "Deterministic Fit", "95% Confidence Interval"), 
        col = c("black", "red", "red"), lty=c(1,1,2))
-
-
-a = forecast(ari_opt, xreg = trend_regressor, level = 95)
-autoplot(a)
 
